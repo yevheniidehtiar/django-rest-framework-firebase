@@ -70,19 +70,36 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             # Make a new user here!
             user = auth.get_user(uid)
             # TODO: This assumes emails are unique. Factor this out as an option
-            try:
-                user = User.objects.get(email=user.email)
-                setattr(user, uid_field, uid)
-                user.save()
-            except User.DoesNotExist:
-                fields = {
-                    uid_field : uid,
-                    'email':user.email
-                }
-                u = User(**fields)
-                u.is_active = True
-                u.save()
-                return u
+            if api_settings.FIREBASE_PHONE_AUTH:
+                try:
+                    user = User.objects.get(phone_number=user.phone)
+                    setattr(user, uid_field, uid)
+                    user.save()
+                except User.DoesNotExist:
+                    fields = {
+                        uid_field: uid,
+                        'phone_number': user.phone,
+                        'username': user.phone
+                    }
+                    u = User(**fields)
+                    u.is_active = True
+                    u.save()
+                    return u
+            else:
+                try:
+                    user = User.objects.get(email=user.email)
+                    setattr(user, uid_field, uid)
+                    user.save()
+                except User.DoesNotExist:
+                    fields = {
+                        uid_field: uid,
+                        'email': user.email,
+                        'username': user.email
+                    }
+                    u = User(**fields)
+                    u.is_active = True
+                    u.save()
+                    return u
 
         if not user.is_active:
             msg = _('User account is disabled.')
