@@ -17,7 +17,8 @@ if api_settings.FIREBASE_ACCOUNT_KEY_FILE:
 else:
     creds = credentials.Certificate(api_settings.FIREBASE_CREDENTIALS)
 
-firebase = firebase_admin.initialize_app(creds)
+firebase = firebase_admin.initialize_app(creds, name=api_settings.FIREBASE_APP_NAME)
+
 logger = logging.Logger('Firebase Auth REST')
 
 

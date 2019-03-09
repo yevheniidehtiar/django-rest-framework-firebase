@@ -19,12 +19,11 @@ DEFAULTS = {
         'auth_provider_x509_cert_url': "https://www.googleapis.com/oauth2/v1/certs",
         'client_x509_cert_url': ""
     },  # the credentials in raw json form
-
     'FIREBASE_CREATE_NEW_USER': True,  # We'll make a new user if we get one that we don't have yet
-
     'FIREBASE_AUTH_HEADER_PREFIX': "JWT",
     'FIREBASE_UID_FIELD': 'username',
     'FIREBASE_PHONE_AUTH': False,
+    'FIREBASE_APP_NAME': 'auth',
     'FIREBASE_USER_MAIL_SUFFIX': '@example.com',
     'FIREBASE_USER_MAIL_DEFAULT': 'emptymail@example.com',
 }
