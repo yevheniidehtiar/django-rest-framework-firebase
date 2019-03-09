@@ -7,7 +7,7 @@ from firebase_admin import auth
 from django.utils.translation import ugettext as _
 from django.contrib.auth import get_user_model
 
-
+import logging
 from rest_framework.authentication import (
     BaseAuthentication, get_authorization_header
 )
@@ -18,12 +18,19 @@ else:
     creds = credentials.Certificate(api_settings.FIREBASE_CREDENTIALS)
 
 firebase = firebase_admin.initialize_app(creds)
+logger = logging.Logger('Firebase Auth REST')
 
 
 class BaseFirebaseAuthentication(BaseAuthentication):
     """
     Token based authentication using firebase.
     """
+    user_cls = get_user_model()
+    uid_field = api_settings.FIREBASE_UID_FIELD
+    user = None
+
+    def get_token(self, request):
+        raise NotImplementedError
 
     def authenticate(self, request):
         """
@@ -43,69 +50,90 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             msg = _('Could not log in.')
             raise exceptions.AuthenticationFailed(msg)
 
-        user = self.authenticate_credentials(payload)
+        user = self.authenticate_credentials(payload) or None
 
         return (user, payload)
 
     def authenticate_credentials(self, payload):
         """
-        Returns an active user that matches the payload's user id and email.
+        Returns an active user that matches the payload's user id and phone_number or email.
         """
-        User = get_user_model()
-        uid_field = api_settings.FIREBASE_UID_FIELD
         uid = payload['uid']
         if not uid:
             msg = _('Invalid payload.')
             raise exceptions.AuthenticationFailed(msg)
         try:
-            if 'email_verified' not in payload or ('email_verified' in payload and not payload['email_verified']):
+            # if use email
+            if not api_settings.FIREBASE_PHONE_AUTH and payload.get('email_verified', False) is False:
                 msg = _('User email not yet confirmed.')
                 raise exceptions.AuthenticationFailed(msg)
-            user = User.objects.get(**{uid_field: uid})
-        except User.DoesNotExist:
+            user = self.user_cls.objects.get(**{self.uid_field: uid})
+        except self.user_cls.DoesNotExist:
             if not api_settings.FIREBASE_CREATE_NEW_USER:
                 msg = _('Invalid signature.')
                 raise exceptions.AuthenticationFailed(msg)
 
             # Make a new user here!
-            user = auth.get_user(uid)
-            # TODO: This assumes emails are unique. Factor this out as an option
-            if api_settings.FIREBASE_PHONE_AUTH:
-                try:
-                    user = User.objects.get(phone_number=user.phone)
-                    setattr(user, uid_field, uid)
-                    user.save()
-                except User.DoesNotExist:
-                    fields = {
-                        uid_field: uid,
-                        'phone_number': user.phone,
-                        'username': user.phone
-                    }
-                    u = User(**fields)
-                    u.is_active = True
-                    u.save()
-                    return u
-            else:
-                try:
-                    user = User.objects.get(email=user.email)
-                    setattr(user, uid_field, uid)
-                    user.save()
-                except User.DoesNotExist:
-                    fields = {
-                        uid_field: uid,
-                        'email': user.email,
-                        'username': user.email
-                    }
-                    u = User(**fields)
-                    u.is_active = True
-                    u.save()
-                    return u
+            self.user = auth.get_user(uid)
+            user = self.create_user()
 
-        if not user.is_active:
+        if user is not None and not user.is_active:
             msg = _('User account is disabled.')
             raise exceptions.AuthenticationFailed(msg)
+        return user or None
 
-        return user
+    def get_email(self):
+        if self.user.email:
+            return self.user.email
+        if self.user.phone_number:
+            return str(self.user.phone_number).replace('+', '') + api_settings.FIREBASE_USER_MAIL_SUFFIX
+        return api_settings.FIREBASE_USER_MAIL_DEFAULT
+
+    def get_username(self):
+        if self.user:
+            if self.user.display_name:
+                return self.user.display_name
+            else:
+                return self.get_email()
+
+    def get_defaults(self):
+        return {
+            self.uid_field: self.user.uid,
+            'username': self.get_username(),
+            'email': self.get_email(),
+            'phone_number': self.user.phone_number
+        }
+
+    def get_user_kwargs(self, **kwargs):
+        fields = self.get_defaults()
+        if api_settings.FIREBASE_PHONE_AUTH:
+            query = {'phone_number': self.user.phone_number}
+            fields.pop('phone_number')  # prevent duplicate kwargs
+        else:
+            query = {'email': self.user.email}
+            fields.pop('email')  # prevent duplicate kwargs
+        return query, fields.update(kwargs)
+
+    def create_user(self):
+        """
+        Try to create or get django user instance
+        :return object or None:
+        """
+        try:
+            query, initial = self.get_user_kwargs()
+            user, created = self.user_cls.objects.get_or_create(query, defaults=initial)
+            if created:
+                return user
+            # if found user by `query` try to save firebase uid to db
+            elif user is not None:
+                setattr(user, self.uid_field, self.user.uid)
+                user.save()
+                return user
+        except Exception as e:
+            logger.error(e)
+            msg = _('Error on user account creating. Please, write to support')
+            raise exceptions.AuthenticationFailed(msg)
+        return None
 
 
 class FirebaseAuthentication(BaseFirebaseAuthentication):

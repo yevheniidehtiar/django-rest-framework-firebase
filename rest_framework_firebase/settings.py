@@ -24,7 +24,9 @@ DEFAULTS = {
 
     'FIREBASE_AUTH_HEADER_PREFIX': "JWT",
     'FIREBASE_UID_FIELD': 'username',
-    'FIREBASE_PHONE_AUTH': False
+    'FIREBASE_PHONE_AUTH': False,
+    'FIREBASE_USER_MAIL_SUFFIX': '@example.com',
+    'FIREBASE_USER_MAIL_DEFAULT': 'emptymail@example.com',
 }
 
 # List of settings that may be in string import notation.
