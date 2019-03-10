@@ -43,7 +43,7 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             return None
 
         try:
-            payload = auth.verify_id_token(firebase_token)
+            payload = auth.verify_id_token(firebase_token, app=firebase)
         except ValueError:
             msg = _('Signature has expired.')
             raise exceptions.AuthenticationFailed(msg)
@@ -75,7 +75,7 @@ class BaseFirebaseAuthentication(BaseAuthentication):
                 raise exceptions.AuthenticationFailed(msg)
 
             # Make a new user here!
-            self.user = auth.get_user(uid)
+            self.user = auth.get_user(uid, app=firebase)
             user = self.create_user()
 
         if user is not None and not user.is_active:
