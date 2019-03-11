@@ -105,15 +105,20 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             'phone_number': self.user.phone_number
         }
 
-    def get_user_kwargs(self, **kwargs):
+    @property
+    def query(self):
+        if api_settings.FIREBASE_PHONE_AUTH:
+            return {'phone_number': self.user.phone_number}
+        return {'email': self.user.email}
+
+    @property
+    def defaults(self):
         fields = self.get_defaults()
         if api_settings.FIREBASE_PHONE_AUTH:
-            query = {'phone_number': self.user.phone_number}
             fields.pop('phone_number')  # prevent duplicate kwargs
         else:
-            query = {'email': self.user.email}
             fields.pop('email')  # prevent duplicate kwargs
-        return query, fields.update(kwargs)
+        return fields
 
     def create_user(self):
         """
@@ -121,8 +126,7 @@ class BaseFirebaseAuthentication(BaseAuthentication):
         :return object or None:
         """
         try:
-            query, initial = self.get_user_kwargs()
-            user, created = self.user_cls.objects.get_or_create(query, defaults=initial)
+            user, created = self.user_cls.objects.get_or_create(self.query, defaults=self.defaults)
             if created:
                 return user
             # if found user by `query` try to save firebase uid to db
