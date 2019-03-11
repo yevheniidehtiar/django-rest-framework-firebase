@@ -126,7 +126,7 @@ class BaseFirebaseAuthentication(BaseAuthentication):
         :return object or None:
         """
         try:
-            user, created = self.user_cls.objects.get_or_create(self.query, defaults=self.defaults)
+            user, created = self.user_cls.objects.get_or_create(defaults=self.defaults, **self.query)
             if created:
                 return user
             # if found user by `query` try to save firebase uid to db
