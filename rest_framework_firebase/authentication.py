@@ -114,10 +114,11 @@ class BaseFirebaseAuthentication(BaseAuthentication):
     @property
     def defaults(self):
         fields = self.get_defaults()
+        # prevent duplicate kwargs
         if api_settings.FIREBASE_PHONE_AUTH:
-            fields.pop('phone_number')  # prevent duplicate kwargs
+            fields.pop('phone_number')
         else:
-            fields.pop('email')  # prevent duplicate kwargs
+            fields.pop('email')
         return fields
 
     def create_user(self):
@@ -132,6 +133,10 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             # if found user by `query` try to save firebase uid to db
             elif user is not None:
                 setattr(user, self.uid_field, self.user.uid)
+                # set additional information in user model
+                if api_settings.FIREBASE_ADDITIONAL_FIELDS:
+                    for key, value in api_settings.FIREBASE_ADDITIONAL_FIELDS.items():
+                        setattr(user, key, value)
                 user.save()
                 return user
         except Exception as e:
@@ -149,24 +154,24 @@ class FirebaseAuthentication(BaseFirebaseAuthentication):
     www_authenticate_realm = 'api'
 
     def get_token(self, request):
-        auth = get_authorization_header(request).split()
+        auth_header = get_authorization_header(request).split()
         auth_header_prefix = api_settings.FIREBASE_AUTH_HEADER_PREFIX.lower()
 
         if not auth:
             return None
 
-        if len(auth) == 1:
+        if len(auth_header) == 1:
             msg = _('Invalid Authorization header. No credentials provided.')
             raise exceptions.AuthenticationFailed(msg)
-        elif len(auth) > 2:
+        elif len(auth_header) > 2:
             msg = _('Invalid Authorization header. Credentials string '
                     'should not contain spaces.')
             raise exceptions.AuthenticationFailed(msg)
 
-        if smart_text(auth[0].lower()) != auth_header_prefix:
+        if smart_text(auth_header[0].lower()) != auth_header_prefix:
             return None
 
-        return auth[1]
+        return auth_header[1]
 
     def authenticate_header(self, request):
         """
