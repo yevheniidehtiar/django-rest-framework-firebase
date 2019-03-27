@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __title__ = 'djangorestframework-firebase-auth'
-__version__ = '0.3.4'
+__version__ = '0.4.0'
 __author__ = 'Wesley Lima'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2018 Fan Retreat, Inc.'

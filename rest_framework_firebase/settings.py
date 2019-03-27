@@ -26,6 +26,7 @@ DEFAULTS = {
     'FIREBASE_APP_NAME': 'auth',
     'FIREBASE_USER_MAIL_SUFFIX': '@example.com',
     'FIREBASE_USER_MAIL_DEFAULT': 'emptymail@example.com',
+    'FIREBASE_ADDITIONAL_FIELDS': {}
 }
 
 # List of settings that may be in string import notation.
