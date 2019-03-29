@@ -119,6 +119,8 @@ class BaseFirebaseAuthentication(BaseAuthentication):
             fields.pop('phone_number')
         else:
             fields.pop('email')
+        if api_settings.FIREBASE_ADDITIONAL_FIELDS:
+            fields.update(api_settings.FIREBASE_ADDITIONAL_FIELDS)
         return fields
 
     def create_user(self):
@@ -157,7 +159,7 @@ class FirebaseAuthentication(BaseFirebaseAuthentication):
         auth_header = get_authorization_header(request).split()
         auth_header_prefix = api_settings.FIREBASE_AUTH_HEADER_PREFIX.lower()
 
-        if not auth:
+        if not auth_header:
             return None
 
         if len(auth_header) == 1:
