@@ -159,7 +159,7 @@ class FirebaseAuthentication(BaseFirebaseAuthentication):
         auth_header = get_authorization_header(request).split()
         auth_header_prefix = api_settings.FIREBASE_AUTH_HEADER_PREFIX.lower()
 
-        if not auth_header:
+        if not auth_header or len(auth_header) == 0:
             return None
 
         if len(auth_header) == 1:
